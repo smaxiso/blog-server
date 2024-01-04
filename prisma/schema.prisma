@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      ="postgresql://postgres:1650@localhost:5432/blog?schema=public"
+}
+
+model Blog {
+  id  Int  @id @default(autoincrement())
+  title String
+  content String
+  // image Images[]
+  date DateTime?
+}
+
+// model Images {
+//   id  Int  @id @default(autoincrement())
+//   blog Blog? @relation(fields: [imgId], references: [id])
+//   imgId  Int
+// }
