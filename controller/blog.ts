@@ -7,7 +7,8 @@ import * as joi from 'joi';
 const blogRequest = joi.object({
     title: joi.string().required(),
     content: joi.string().required(),
-    images: joi.array().required()
+    category: joi.string().optional(),
+    type: joi.string().required()
 })
 
 class Blog{
@@ -15,12 +16,31 @@ class Blog{
 
     createBlog = async (request: any, response: Response) => {
         const {error, value} = blogRequest.validate(request.body);
+        const {
+            title,
+            content,
+            category,
+            type
+        } = request.body;
         if(error){
             return response.status(400).json({ error: error.details[0].message });
         }
-        // const blog = await this.prisma.blog.create(
+        const timeElapsed = Date.now();
+        const today = new Date(timeElapsed);
+        const timestamp = today.toISOString();
+        const blog = await this.prisma.blog.create({
+            data: {
+                title,
+                content,
+                timestamp,
+                type,
+                category
+            }
+
+        })
         return response.status(200).json({
-            "message" : "success"
+            "message" : "success",
+            "data": blog
         })
     }
 
@@ -54,19 +74,23 @@ class Blog{
 
         return response
         .status(200)
-        .json({ message: 'Blog updated successfully', updatedBlog });
+        .json({ message: 'Blog updated successfully', "data":updatedBlog });
 
     }
 
     getAllBlog = async (request: any, response: Response) => {
         const skip:any = (request.skip) || 10;
         let page:any = (request.page) || 0;
+        const type = (request.type) || "ENGLISH";
         const blogs = this.prisma.blog.findMany(
             {
                 skip:page*skip,
                 take:skip,
                 orderBy: {
                     id: 'asc'
+                },
+                where:{
+                    type
                 }
             }
         )
