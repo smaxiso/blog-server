@@ -79,9 +79,9 @@ class Blog{
     }
 
     getAllBlog = async (request: any, response: Response) => {
-        const skip:any = (request.skip) || 10;
-        let page:any = (request.page) || 0;
-        const type = (request.type) || "ENGLISH";
+        const skip:any = (request.query.skip) || 10;
+        let page:any = (request.query.page) || 0;
+        const type = (request.query.type) || "ENGLISH";
         const blogs = this.prisma.blog.findMany(
             {
                 skip:page*skip,
