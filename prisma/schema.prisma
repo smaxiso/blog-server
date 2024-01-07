@@ -4,14 +4,14 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      ="postgresql://postgres:1650@localhost:5432/blog?schema=public"
+  url      = env("DATABASE_URL")
 }
 
 model Blog {
-  id  Int  @id @default(autoincrement())
-  title String
-  content String
+  id        Int       @id @default(autoincrement())
+  title     String
+  content   String
   timestamp DateTime?
-  type String
-  category String?
+  type      String
+  category  String?
 }
