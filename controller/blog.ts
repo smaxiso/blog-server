@@ -1,29 +1,27 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
-import { request } from "http";
 import * as joi from "joi";
 
 const blogRequest = joi.object({
-  title: joi.string().required(),
+title: joi.string().required(),
   content: joi.string().required(),
   category: joi.string().optional(),
   type: joi.string().required(),
 });
 
 class Blog {
-  prisma = new PrismaClient();
+  private prisma = new PrismaClient();
 
-  createBlog = async (request: any, response: Response) => {
+  createBlog = async (request: Request, response: Response) => {
     try {
-      const { error, value } = blogRequest.validate(request.body);
-      const { title, content, category, type } = request.body;
+      const { error } = blogRequest.validate(request.body);
       if (error) {
         return response.status(400).json({ error: error.details[0].message });
       }
-      const timeElapsed = Date.now();
-      const today = new Date(timeElapsed);
-      const timestamp = today.toISOString();
+
+      const { title, content, category, type } = request.body;
+      const timestamp = new Date().toISOString();
+
       const blog = await this.prisma.blog.create({
         data: {
           title,
@@ -33,107 +31,128 @@ class Blog {
           category,
         },
       });
-      return response.status(200).json({
+
+      return response.status(201).json({
         message: "success",
         data: blog,
       });
     } catch (err) {
-      console.log(err);
+      console.error("Error creating blog:", err);
+      return response.status(500).json({ error: "Internal Server Error" });
     }
   };
 
-  updateBlog = async (request: any, response: Response) => {
-    const blogId = request.id;
+  updateBlog = async (request: Request, response: Response) => {
+    const blogId = parseInt(request.params.id, 10);
+
     if (!blogId) {
-      return response.status(400).json({ error: "A blog id is needed!!" });
+      return response.status(400).json({ error: "A valid blog id is needed!!" });
     }
 
-    const existingBlog = await this.prisma.blog.findUnique({
-      where: { id: blogId },
-    });
+    try {
+      const updatedBlog = await this.prisma.blog.update({
+        where: { id: blogId },
+        data: {
+          title: request.body.title,
+          content: request.body.content,
+        },
+      });
 
-    if (!existingBlog) {
-      return response.status(400).json({ message: "Blog does not exists." });
+      return response.status(200).json({
+        message: "Blog updated successfully",
+        data: updatedBlog,
+      });
+    } catch (error) {
+      console.error("Error updating blog:", error);
+      return response.status(500).json({ error: "Internal Server Error" });
     }
-    if (request.title) {
-      existingBlog.title = request.title;
-    }
-    if (request.content) {
-      existingBlog.content = request.content;
-    }
-
-    const updatedBlog = await this.prisma.blog.update({
-      where: { id: blogId },
-      data: {
-        title: existingBlog.title,
-        content: existingBlog.content,
-      },
-    });
-
-    return response
-      .status(200)
-      .json({ message: "Blog updated successfully", data: updatedBlog });
   };
 
-  getAllBlog = async (request: any, response: Response) => {
-    const skip: any = request.query.skip || 10;
-    let page: any = request.query.page || 0;
-    const type = request.query.type || "ENGLISH";
-    const blogs = this.prisma.blog.findMany({
-      skip: page * skip,
-      take: skip,
-      orderBy: {
-        id: "asc",
-      },
-      where: {
-        type,
-      },
-    });
+  getAllBlog = async (request: Request, response: Response) => {
+    const skip: number = parseInt(request.query.skip, 10) || 10;
+    const page: number = parseInt(request.query.page, 10) || 0;
+    const type: string = request.query.type || "ENGLISH";
 
-    if (!blogs) {
-      return response.status(400).json({ message: "Blogs does not exists." });
+    try {
+      const blogs = await this.prisma.blog.findMany({
+        skip: page * skip,
+        take: skip,
+        orderBy: {
+          id: "asc",
+        },
+        where: {
+          type,
+        },
+      });
+
+      if (!blogs || blogs.length === 0) {
+        return response.status(404).json({ message: "Blogs not found." });
+      }
+
+      return response.status(200).json({
+        message: "success",
+        data: blogs,
+      });
+    } catch (error) {
+      console.error("Error fetching blogs:", error);
+      return response.status(500).json({ error: "Internal Server Error" });
     }
-
-    return response.status(200).json({
-      message: "success",
-      data: blogs,
-    });
   };
 
-  getBlogById = async (request: any, response: Response) => {
-    if (!request.params.id) {
-      return response.status(400).json({ message: "Blog Id does not exists." });
-    }
-    const id = request.params.id;
-    const blog = this.prisma.blog.findFirst({
-      where: {
-        id,
-      },
-    });
+  getBlogById = async (request: Request, response: Response) => {
+    const blogId = parseInt(request.params.id, 10);
 
-    return response.status(200).json({
-      message: "success",
-      data: blog,
-    });
+    if (!blogId) {
+      return response.status(400).json({ message: "Invalid Blog Id." });
+    }
+
+    try {
+      const blog = await this.prisma.blog.findFirst({
+        where: {
+          id: blogId,
+        },
+      });
+
+      if (!blog) {
+        return response.status(404).json({ message: "Blog not found." });
+      }
+
+      return response.status(200).json({
+        message: "success",
+        data: blog,
+      });
+    } catch (error) {
+      console.error("Error fetching blog by ID:", error);
+      return response.status(500).json({ error: "Internal Server Error" });
+    }
   };
 
-  deleteBlog = async (request: any, response: Response) => {
-    if (!request.body.id) {
-      return response.status(400).json({ message: "Blog Id does not exists." });
+  deleteBlog = async (request: Request, response: Response) => {
+    const blogId = parseInt(request.params.id, 10);
+
+    if (!blogId) {
+      return response.status(400).json({ message: "Invalid Blog Id." });
     }
 
-    const id = request.body.id;
+    try {
+      const deletedBlog = await this.prisma.blog.delete({
+        where: {
+          id: blogId,
+        },
+      });
 
-    const blog = this.prisma.blog.delete({
-      where: {
-        id,
-      },
-    });
+      if (!deletedBlog) {
+        return response.status(404).json({ message: "Blog not found." });
+      }
 
-    return response.status(200).json({
-      message: "success",
-      data: blog,
-    });
+      return response.status(200).json({
+        message: "success",
+        data: deletedBlog,
+      });
+    } catch (error) {
+      console.error("Error deleting blog:", error);
+      return response.status(500).json({ error: "Internal Server Error" });
+    }
   };
 }
 

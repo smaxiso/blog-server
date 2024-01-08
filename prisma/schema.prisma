@@ -8,10 +8,42 @@ datasource db {
 }
 
 model Blog {
-  id        Int       @id @default(autoincrement())
-  title     String
-  content   String
-  timestamp DateTime?
-  type      String
-  category  String?
+  id            Int       @id @default(autoincrement())
+  title         String
+  content       String
+  timestamp     DateTime?
+  type          String
+  category      String?
+  authorName    String?
+  authorUserId  Int?
+  tags          String[]
+  views         Int       @default(0)
+  likes         Int       @default(0)
+  status        String?
+  language      String?
+  source        String?
+  comments      Comment[]
+}
+
+model Comment {
+  id          Int     @id @default(autoincrement())
+  content     String
+  createdAt   DateTime @default(now())
+  commenterId Int?
+  commenter   User?   @relation(fields: [commenterId], references: [id])
+  blogId      Int
+  blog        Blog    @relation(fields: [blogId], references: [id])
+}
+
+model User {
+  id          Int       @id @default(autoincrement())
+  username    String    @unique
+  email       String    @unique
+  password    String
+  firstName   String?
+  lastName    String?
+  bio         String?
+  avatar      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
